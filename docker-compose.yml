@@ -1,0 +1,34 @@
+version: '3.8'
+services:
+  homeassistant:
+    image: "ghcr.io/home-assistant/home-assistant:stable"
+    container_name: homeassistant
+    restart: unless-stopped
+    privileged: true
+    volumes:
+      - ./config:/config
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      - TZ=${TZ}  # Usa la variable del .env
+    ports:
+      - "8123:8123"
+    networks:
+      - homeassistant_network
+
+  mariadb:
+    image: mariadb:latest
+    container_name: mariadb
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}  # Variable del .env
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+    volumes:
+      - ./mariadb:/var/lib/mysql
+    networks:
+      - homeassistant_network
+
+networks:
+  homeassistant_network:
+    driver: bridge
