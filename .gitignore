@@ -1,2 +1,7 @@
 config/
 mariadb/
+duckdns/
+frigate/
+node-red/
+portainer/
+zigbee2mqtt/

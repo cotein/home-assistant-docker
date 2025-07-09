@@ -1,33 +1,114 @@
 version: '3.8'
 services:
+  # Home Assistant Core (sin Add-ons nativos)
   homeassistant:
     image: "ghcr.io/home-assistant/home-assistant:stable"
     container_name: homeassistant
     restart: unless-stopped
-    privileged: true
+    privileged: true  # Necesario para acceso a dispositivos USB (Zigbee/Z-Wave)
     volumes:
       - ./config:/config
       - /etc/localtime:/etc/localtime:ro
+      - /dev/serial/by-id:/dev/serial/by-id  # Para Zigbee/Z-Wave
     environment:
-      - TZ=${TZ}  # Usa la variable del .env
+      - TZ=${TZ}
     ports:
-      - "8123:8123"
+      - "8123:8123"  # Web UI
+      - "51827:51827/udp"  # HomeKit (opcional)
+    networks:
+      - homeassistant_network
+  #  depends_on:
+  #    - mosquitto  # Espera a que MQTT esté listo
+
+  # Base de datos (opcional pero recomendado para entornos profesionales)
+#  mariadb:
+#    image: mariadb:latest
+#    container_name: mariadb
+#    restart: unless-stopped
+#    environment:
+#      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+#      - MYSQL_DATABASE=${MYSQL_DATABASE}
+#      - MYSQL_USER=${MYSQL_USER}
+#      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+#    volumes:
+#      - ./mariadb:/var/lib/mysql
+#    networks:
+#      - homeassistant_network
+
+  # --- ADD-ONS EMULADOS CON DOCKER ---
+  # 1. Mosquitto (MQTT Broker - esencial para sensores IoT)
+#  mosquitto:
+#    image: eclipse-mosquitto
+#    container_name: mosquitto
+#    restart: unless-stopped
+#    ports:
+#      - "1883:1883"  # MQTT
+#      - "9001:9001"  # WebSocket (opcional)
+#    volumes:
+#      - ./mosquitto/config:/mosquitto/config
+#      - ./mosquitto/data:/mosquitto/data
+#      - ./mosquitto/log:/mosquitto/log
+#    networks:
+#      - homeassistant_network
+
+  # 2. Node-RED (automatizaciones avanzadas)
+#  nodered:
+#    image: nodered/node-red
+#    container_name: nodered
+#    restart: unless-stopped
+#    ports:
+#      - "1880:1880"
+#    volumes:
+#      - ./node-red/data:/data
+#    networks:
+#      - homeassistant_network
+
+  # 3. DuckDNS (actualización dinámica de DNS)
+  duckdns:
+    image: linuxserver/duckdns
+    container_name: duckdns
+    restart: unless-stopped
+    environment:
+      - PUID=1000  # ID de usuario (ajustar según tu sistema)
+      - PGID=1000  # ID de grupo (ajustar según tu sistema)
+      - TZ=${TZ}
+      - SUBDOMAINS=coto-homeassistant  # Reemplaza con tu subdominio DuckDNS
+      - TOKEN=a0c869c9-44a7-40d6-8632-2d21d7dbc1ef  # Reemplaza con tu token DuckDNS
+      - LOG_FILE=true  # Opcional: habilita logs si lo necesitas
+    volumes:
+      - ./duckdns:/config  # Para persistencia de logs si se habilitan
     networks:
       - homeassistant_network
 
-  mariadb:
-    image: mariadb:latest
-    container_name: mariadb
+  # 4. Portainer (gestión visual de Docker - útil para clientes)
+  portainer:
+    image: portainer/portainer-ce
+    container_name: portainer
     restart: unless-stopped
-    environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}  # Variable del .env
-      - MYSQL_DATABASE=${MYSQL_DATABASE}
-      - MYSQL_USER=${MYSQL_USER}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+    ports:
+      - "9000:9000"
     volumes:
-      - ./mariadb:/var/lib/mysql
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./portainer/data:/data
     networks:
       - homeassistant_network
+
+#  frigate:
+#    container_name: frigate
+#    image: ghcr.io/blakeblackshear/frigate:stable
+#    restart: unless-stopped
+#    shm_size: '64mb'  # Importante para el rendimiento
+#    volumes:
+#      - ./frigate:/config
+#      - /ruta/a/tu/almacenamiento:/media/frigate
+#      - /etc/localtime:/etc/localtime:ro
+#    ports:
+#      - "5000:5000"  # Web UI
+#      - "1935:1935"  # RTMP (opcional, para transmisión en vivo)
+#    environment:
+#      - FRIGATE_RTSP_PASSWORD=tupassword  # Cambia esto
+#    networks:
+#      - homeassistant_network
 
 networks:
   homeassistant_network:
